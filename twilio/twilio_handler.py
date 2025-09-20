@@ -80,7 +80,6 @@ def twilio_call_end_pipeline():
         # Step 2: Clean the transcript
         future_cleaned = executor.submit(response_cleaner, recording_transcript)
         cleaned_transcript = future_cleaned.result()  # waits until done
-        stim_data = draw_connections(cleaned_transcript)
 
     # SQL stuff now
     try:
@@ -115,8 +114,10 @@ def twilio_call_end_pipeline():
 
     # SQL Stuff for stims now
     try:
+        stim_data = draw_connections(cleaned_transcript)
         print(result[0])
         print('AAAAA', stim_data)
+        print('EEEEEE', cleaned_transcript)
         conn = psycopg.connect(os.getenv('SUPABASE_URL'), options="-c prepare_threshold=0")
         cur = conn.cursor()
 
