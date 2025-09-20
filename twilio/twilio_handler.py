@@ -3,6 +3,7 @@ from openai import OpenAI
 from load_dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor
 from stim_emotion_connector import draw_connections
+from insight_generation import find_similar_stims, grab_previous_insights, generate_insights
 import psycopg
 import requests
 import os
@@ -111,13 +112,9 @@ def twilio_call_end_pipeline():
             conn.close()
 
 
-
     # SQL Stuff for stims now
     try:
         stim_data = draw_connections(cleaned_transcript)
-        print(result[0])
-        print('AAAAA', stim_data)
-        print('EEEEEE', cleaned_transcript)
         conn = psycopg.connect(os.getenv('SUPABASE_URL'), options="-c prepare_threshold=0")
         cur = conn.cursor()
 
@@ -129,7 +126,6 @@ def twilio_call_end_pipeline():
         '''
 
         for obj, emotions in stim_data.items():
-            print(obj, emotions)
             cur.execute(query, (
                 result[0],                  # user_call_id (hardcoded for now)
                 obj,                # name (the object text)
@@ -156,6 +152,8 @@ def twilio_call_end_pipeline():
             cur.close()
         if 'conn' in locals() and conn:
             conn.close()
+
+    #SQL Stuff for insights!
 
 
     return {
