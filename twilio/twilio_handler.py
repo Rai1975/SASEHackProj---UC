@@ -1,4 +1,5 @@
 from twilio.rest import Client
+from openai import OpenAI
 from load_dotenv import load_dotenv
 import requests
 import os
@@ -10,6 +11,7 @@ account_sid = os.getenv('TWILIO_ACCOUNT_SID')
 auth_token = os.getenv('TWILIO_AUTH_TOKEN')
 twilio_url = os.getenv('TWILIO_XML_URL')
 client = Client(account_sid, auth_token)
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def make_call():
     call = client.calls.create(
@@ -27,10 +29,17 @@ def get_most_recent_recording():
     path = os.path.join(os.getcwd(), "twilio\\raw_recordings\\")
 
     for rec in recordings:
-        recording_url = f"https://api.twilio.com{rec.uri.replace('.json', '.mp3')}"
+        recording_url = f"https://api.twilio.com{rec.uri.replace('.json', '.wav')}"
         response = requests.get(recording_url, auth=(account_sid, auth_token))
 
-        with open(f"{path}{rec.sid}.mp3", "wb") as f:
+        with open(f"{path}{rec.sid}.wav", "wb") as f:
             f.write(response.content)
 
-        return rec.sid
+        # Transcribe using Whisper
+        with open(f"{path}{rec.sid}.wav", "rb") as audio_file:
+            transcript = openai_client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file
+            )
+
+        return {'recording_id': rec.sid, 'transcript': transcript.text}
