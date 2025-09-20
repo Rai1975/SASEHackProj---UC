@@ -109,19 +109,14 @@ def parse_object_list(objects_str: str):
 
 def extract_objects_pipeline(text: str):
     """Complete pipeline for object extraction with error handling."""
-    print(f"Processing text: {text}")
-    print("-" * 50)
 
     # Step 1: Initial extraction
     raw_objects = recognize_objects(text)
-    print(f"Raw extraction: {raw_objects}")
 
     # Step 2: Consolidation with original context
     cleaned_objects_str = consolidate_and_validate_objects(raw_objects, text)
-    print(f"Cleaned extraction: {cleaned_objects_str}")
 
     # Step 3: Parse to actual list
     final_objects = parse_object_list(cleaned_objects_str)
-    print(f"Final parsed objects: {final_objects}")
 
     return final_objects

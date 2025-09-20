@@ -2,6 +2,7 @@ from twilio.rest import Client
 from openai import OpenAI
 from load_dotenv import load_dotenv
 from concurrent.futures import ThreadPoolExecutor
+from stim_emotion_connector import draw_connections
 import psycopg
 import requests
 import os
@@ -79,6 +80,7 @@ def twilio_call_end_pipeline():
         # Step 2: Clean the transcript
         future_cleaned = executor.submit(response_cleaner, recording_transcript)
         cleaned_transcript = future_cleaned.result()  # waits until done
+        stim_data = draw_connections(cleaned_transcript)
 
     # SQL stuff now
     try:
@@ -88,7 +90,7 @@ def twilio_call_end_pipeline():
         #TODO: MAKE SURE TO CHANGE THE USER ID TO AN INPUT FROM SESSION
         query = '''
             INSERT INTO "User_Call" (raw_text, cleaned_text, user_id, recording_id)
-            VALUES (%s, %s, 1, %s)
+            VALUES (%s, %s, 3, %s)
             RETURNING id
         '''
 
@@ -100,6 +102,52 @@ def twilio_call_end_pipeline():
 
     except Exception as e:
         print(f"Error connecting or querying Supabase: {e}")
+        return "Errorr", 400
+
+    finally:
+        # Close the cursor and connection
+        if 'cur' in locals() and cur:
+            cur.close()
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
+
+    # SQL Stuff for stims now
+    try:
+        print(result[0])
+        print('AAAAA', stim_data)
+        conn = psycopg.connect(os.getenv('SUPABASE_URL'), options="-c prepare_threshold=0")
+        cur = conn.cursor()
+
+        #TODO: MAKE SURE TO CHANGE THE USER ID TO AN INPUT FROM SESSION
+        query = '''
+            INSERT INTO "Stimuli" (user_call_id, name, anger, fear, joy, love, sadness, surprise)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        '''
+
+        for obj, emotions in stim_data.items():
+            print(obj, emotions)
+            cur.execute(query, (
+                result[0],                  # user_call_id (hardcoded for now)
+                obj,                # name (the object text)
+                emotions.get("anger", 0),
+                emotions.get("fear", 0),
+                emotions.get("joy", 0),
+                emotions.get("love", 0),
+                emotions.get("sadness", 0),
+                emotions.get("surprise", 0),
+            ))
+            stim_id = cur.fetchone()[0]
+        # result = cur.fetchone()
+            print(f"Current ID from Supabase: {stim_id}")
+
+        conn.commit()
+
+    except Exception as e:
+        print(f"Error connecting or querying Supabase: {e}")
+        return "Errorr", 400
 
     finally:
         # Close the cursor and connection
@@ -113,7 +161,7 @@ def twilio_call_end_pipeline():
         "recording_id": recording_transcript.get("recording_id"),
         "raw_transcript": recording_transcript.get("transcript"),
         "cleaned_transcript": cleaned_transcript
-    }
+    }, 200
 
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True)

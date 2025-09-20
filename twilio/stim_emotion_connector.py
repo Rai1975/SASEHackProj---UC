@@ -21,3 +21,7 @@ def draw_connections(text):
                 }
 
     return object_emotions
+
+
+# if __name__=="__main__":
+#     print(draw_connections("I like apples and Bananas."))
