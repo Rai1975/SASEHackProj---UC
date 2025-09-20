@@ -23,14 +23,14 @@ Your task is to:
 - Compare these emotions to previous insights and highlight changes or progress over time.
 - Present your insights clearly, structured, and concise (e.g., in bullet points or sections).
 
-Give your answer in a concise format, in 1 paragraph
+Give your answer in a concise format, in 1 paragraph. Speak in first person, refer to the user as 'You'
 """
 
 
 def find_similar_stims(recognized_objects):
     query = '''
     SELECT id FROM "Stimuli"
-    WHERE similarity(name, %s) > 0.5
+    WHERE similarity(name, %s) > 0.4
     '''
 
     try:

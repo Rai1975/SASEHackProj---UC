@@ -83,6 +83,7 @@ def twilio_call_end_pipeline():
         cleaned_transcript = future_cleaned.result()  # waits until done
 
     # SQL stuff now
+    print('HERE 1')
     try:
         conn = psycopg.connect(os.getenv('SUPABASE_URL'), options="-c prepare_threshold=0")
         cur = conn.cursor()
@@ -111,6 +112,7 @@ def twilio_call_end_pipeline():
         if 'conn' in locals() and conn:
             conn.close()
 
+    print('HERE 2')
 
     # SQL Stuff for stims now
     try:
@@ -153,8 +155,48 @@ def twilio_call_end_pipeline():
         if 'conn' in locals() and conn:
             conn.close()
 
-    #SQL Stuff for insights!
+    print('HERE 3')
 
+    #SQL Stuff for insights!
+    try:
+        similar_stim_ids = find_similar_stims(list(stim_data.keys()))
+        previous_insights = grab_previous_insights(stim_ids=similar_stim_ids)
+        print('PREV_INSIGHTS', previous_insights)
+        new_insights = generate_insights(previous_insights, cleaned_transcript)
+        conn = psycopg.connect(os.getenv('SUPABASE_URL'), options="-c prepare_threshold=0")
+        cur = conn.cursor()
+
+        insight_table = '''
+        INSERT INTO "Call_Insights"
+        (insight, user_id, call_id) VALUES (%s, %s, %s)
+        RETURNING id
+        '''
+
+        insight_stim_table = '''
+        INSERT INTO "Stim_Insight" (stim_id, insight_id)
+        VALUES (%s, %s)
+        '''
+
+        cur.execute(insight_table, (new_insights, 3, result[0]))
+        insight_id = cur.fetchone()[0]
+        conn.commit()
+
+        for stim_id in similar_stim_ids:
+            cur.execute(insight_stim_table, (stim_id, insight_id))
+            conn.commit()
+
+    except Exception as e:
+        print(f"Error connecting or querying Supabase: {e}")
+        return "Errorr", 400
+
+    finally:
+        # Close the cursor and connection
+        if 'cur' in locals() and cur:
+            cur.close()
+        if 'conn' in locals() and conn:
+            conn.close()
+
+    print('HERE 4')
 
     return {
         "recording_id": recording_transcript.get("recording_id"),
