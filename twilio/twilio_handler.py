@@ -1,10 +1,22 @@
 from twilio.rest import Client
 from openai import OpenAI
 from load_dotenv import load_dotenv
+from concurrent.futures import ThreadPoolExecutor
+import psycopg
 import requests
 import os
+from flask import Flask
+
+app = Flask(__name__)
 
 load_dotenv()
+
+SYSTEM_PROMPT = """
+You are an intelligent agent tasked with cleaning up grammatical errors in spoken words. You will
+be given a transcript from spoken text which you will have to clean up into correct grammar.
+
+YOU MUST NOT CHANGE TOO MUCH OF THE SENTENCE STRUCTURE OR THE SEMANTIC MEANING OF THE SENTENCES.
+"""
 
 # Twilio credentials (from console)
 account_sid = os.getenv('TWILIO_ACCOUNT_SID')
@@ -43,3 +55,65 @@ def get_most_recent_recording():
             )
 
         return {'recording_id': rec.sid, 'transcript': transcript.text}
+
+def response_cleaner(response):
+    transcript = response.get('transcript')
+
+    output = openai_client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "developer", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": f"Transcript: {transcript}"}
+    ]
+    )
+
+    return output.choices[0].message.content
+
+@app.route('/post-call-action', methods=['GET'])
+def twilio_call_end_pipeline():
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        # Step 1: Get the recording from Twilio
+        future_recording = executor.submit(get_most_recent_recording)
+        recording_transcript = future_recording.result()  # waits until done
+
+        # Step 2: Clean the transcript
+        future_cleaned = executor.submit(response_cleaner, recording_transcript)
+        cleaned_transcript = future_cleaned.result()  # waits until done
+
+    # SQL stuff now
+    try:
+        conn = psycopg.connect(os.getenv('SUPABASE_URL'), options="-c prepare_threshold=0")
+        cur = conn.cursor()
+
+        #TODO: MAKE SURE TO CHANGE THE USER ID TO AN INPUT FROM SESSION
+        query = '''
+            INSERT INTO "User_Call" (raw_text, cleaned_text, user_id, recording_id)
+            VALUES (%s, %s, 1, %s)
+            RETURNING id
+        '''
+
+        cur.execute(query, (recording_transcript.get('transcript'), cleaned_transcript, recording_transcript.get('recording_id')))
+        result = cur.fetchone()
+        print(f"Current ID from Supabase: {result[0]}")
+
+        conn.commit()
+
+    except Exception as e:
+        print(f"Error connecting or querying Supabase: {e}")
+
+    finally:
+        # Close the cursor and connection
+        if 'cur' in locals() and cur:
+            cur.close()
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
+    return {
+        "recording_id": recording_transcript.get("recording_id"),
+        "raw_transcript": recording_transcript.get("transcript"),
+        "cleaned_transcript": cleaned_transcript
+    }
+
+if __name__ == "__main__":
+    app.run()
