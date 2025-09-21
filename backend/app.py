@@ -134,5 +134,56 @@ def get_call_by_date():
         if 'conn' in locals() and conn:
             conn.close()
 
+@app.route('/stimulus/emotion-mapping', methods=['GET'])
+def get_emotion_mappings():
+    query = '''
+        SELECT name, created_at, anger, fear, joy, love, sadness, surprise
+        FROM "Stimuli"
+        ORDER BY name, created_at
+    '''
+
+    try:
+        conn = psycopg.connect(
+            os.getenv('SUPABASE_URL'),
+            options="-c prepare_threshold=0"
+        )
+        cur = conn.cursor()
+        cur.execute(query)
+        rows = cur.fetchall()
+
+        # Group by stimulus name
+        result = {}
+        for row in rows:
+            name, created_at, anger, fear, joy, love, sadness, surprise = row
+
+            entry = {
+                "created_at": created_at.isoformat() if created_at else None,
+                "emotions": {
+                    "anger": anger,
+                    "fear": fear,
+                    "joy": joy,
+                    "love": love,
+                    "sadness": sadness,
+                    "surprise": surprise,
+                }
+            }
+
+            if name not in result:
+                result[name] = []
+            result[name].append(entry)
+
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"Error connecting or querying Supabase: {e}")
+        return jsonify({"error": "Database query failed"}), 500
+
+    finally:
+        if 'cur' in locals() and cur:
+            cur.close()
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=8080)
