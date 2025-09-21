@@ -137,7 +137,7 @@ def get_call_by_date():
 @app.route('/stimulus/emotion-mapping', methods=['GET'])
 def get_emotion_mappings():
     query = '''
-        SELECT name, created_at, anger, fear, joy, love, sadness, surprise
+        SELECT name, created_at, anger, fear, joy, love, sadness, surprise, id
         FROM "Stimuli"
         ORDER BY name, created_at
     '''
@@ -154,7 +154,7 @@ def get_emotion_mappings():
         # Group by stimulus name
         result = {}
         for row in rows:
-            name, created_at, anger, fear, joy, love, sadness, surprise = row
+            name, created_at, anger, fear, joy, love, sadness, surprise, id = row
 
             entry = {
                 "created_at": created_at.isoformat() if created_at else None,
@@ -165,7 +165,8 @@ def get_emotion_mappings():
                     "love": love,
                     "sadness": sadness,
                     "surprise": surprise,
-                }
+                },
+                "stim_id": id
             }
 
             if name not in result:
@@ -173,6 +174,49 @@ def get_emotion_mappings():
             result[name].append(entry)
 
         return jsonify(result)
+
+    except Exception as e:
+        print(f"Error connecting or querying Supabase: {e}")
+        return jsonify({"error": "Database query failed"}), 500
+
+    finally:
+        if 'cur' in locals() and cur:
+            cur.close()
+        if 'conn' in locals() and conn:
+            conn.close()
+
+@app.route('/insight/get-by-stim-id', methods=['GET'])
+def get_insight_by_id():
+    stim_id = request.args.get('id')
+
+    if not stim_id:
+        return jsonify({"error": "Missing 'id' query parameter"}), 400
+
+    query = '''
+        SELECT ci.created_at, ci.insight
+        FROM "Call_Insights" ci
+        JOIN "Stim_Insight" si ON ci.id = si.insight_id
+        WHERE si.stim_id = %s
+        ORDER BY ci.created_at
+    '''
+
+    try:
+        conn = psycopg.connect(os.getenv('SUPABASE_URL'), options="-c prepare_threshold=0")
+        cur = conn.cursor()
+
+        cur.execute(query, (stim_id,))
+        rows = cur.fetchall()
+
+        # Format as JSON-friendly structure
+        entries = [
+            {
+                "created_at": row[0].isoformat() if row[0] else None,
+                "insight": row[1]
+            }
+            for row in rows
+        ]
+
+        return jsonify({"entries": entries})
 
     except Exception as e:
         print(f"Error connecting or querying Supabase: {e}")
