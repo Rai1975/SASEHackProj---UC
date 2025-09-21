@@ -87,6 +87,3 @@ def generate_affirmation():
     )
 
     return output.choices[0].message.content
-
-if __name__=="__main__":
-    print(generate_affirmation())

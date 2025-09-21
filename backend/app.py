@@ -4,6 +4,8 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 import requests
 from twilio_controller.affirmation_generation import generate_affirmation
+from twilio_controller.advice_generation import parse_output
+from twilio_controller.reminder_generation import generate_reminders
 import psycopg
 
 load_dotenv()
@@ -233,6 +235,86 @@ def get_affirmation():
     affirmation = generate_affirmation()
 
     return jsonify({"affirmation": affirmation})
+
+@app.route('/get-todays-reminders', methods=['GET'])
+def get_reminders():
+    reminders = generate_reminders()
+    return jsonify({"reminders": reminders})
+
+@app.route('/get-todays-advice', methods=['GET'])
+def get_advice():
+    advice = parse_output()
+    return jsonify({"advice": advice})
+
+@app.route('/stimulus/week-top-emotions', methods=['GET'])
+def get_top_emotions_of_week():
+    query = '''
+    SELECT
+        s.name,
+        COUNT(*) AS mentions,
+        AVG(s.anger)   AS avg_anger,
+        AVG(s.fear)    AS avg_fear,
+        AVG(s.joy)     AS avg_joy,
+        AVG(s.love)    AS avg_love,
+        AVG(s.sadness) AS avg_sadness,
+        AVG(s.surprise) AS avg_surprise
+    FROM "Stimuli" s
+    WHERE s.created_at >= NOW() - INTERVAL '7 days'
+    GROUP BY s.name
+    ORDER BY mentions DESC
+    LIMIT 3;
+    '''
+    try:
+        conn = psycopg.connect(os.getenv('SUPABASE_URL'), options="-c prepare_threshold=0")
+        cur = conn.cursor()
+        cur.execute(query)
+        rows = cur.fetchall()
+
+        # Format as JSON-friendly structure with normalized emotions
+        entries = []
+        for row in rows:
+            # Extract raw emotion values (handling None values)
+            emotions = {
+                "anger": float(row[2]) if row[2] is not None else 0.0,
+                "fear": float(row[3]) if row[3] is not None else 0.0,
+                "joy": float(row[4]) if row[4] is not None else 0.0,
+                "love": float(row[5]) if row[5] is not None else 0.0,
+                "sadness": float(row[6]) if row[6] is not None else 0.0,
+                "surprise": float(row[7]) if row[7] is not None else 0.0,
+            }
+
+            # Calculate the sum for normalization
+            emotion_sum = sum(emotions.values())
+
+            # Normalize emotions (handle case where sum is 0)
+            if emotion_sum > 0:
+                normalized_emotions = {
+                    emotion: value / emotion_sum
+                    for emotion, value in emotions.items()
+                }
+            else:
+                # If all emotions are 0, distribute equally
+                normalized_emotions = {
+                    emotion: 1.0 / 6
+                    for emotion in emotions.keys()
+                }
+
+            entries.append({
+                "name": row[0] if row[0] else None,
+                "mentions": row[1],
+                "emotions": normalized_emotions
+            })
+
+        return jsonify({"top_stims": entries})
+    except Exception as e:
+        print(f"Error connecting or querying Supabase: {e}")
+        return jsonify({"error": "Database query failed"}), 500
+    finally:
+        if 'cur' in locals() and cur:
+            cur.close()
+        if 'conn' in locals() and conn:
+            conn.close()
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=8080)

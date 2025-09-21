@@ -1,25 +1,33 @@
 import React from "react";
 import {
-  Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  ResponsiveContainer,
 } from "recharts";
 
-const EmotionRadar = ({ stimulus, emotions }) => {
-  // `emotions` is expected to be an object like:
-  // { Anger: 0.3, Happiness: 0.02, Sadness: 0.1, Fear: 0.4, Surprise: 0.15, Disgust: 0.2 }
-
+const EmotionRadar = ({ stimulus, emotions, height = 220 }) => {
+  // Transform emotions into chart-friendly data
   const data = Object.entries(emotions).map(([emotion, value]) => ({
     emotion,
-    value
+    value,
   }));
 
   return (
-    <div style={{ width: "100%", height: 400 }}>
-      <h3>{stimulus} → Emotion Mapping</h3>
+    <div style={{ width: "100%", height }}>
       <ResponsiveContainer>
-        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
+        <RadarChart
+          cx="50%"
+          cy="50%"
+          outerRadius="70%"
+          data={data}
+          margin={{ top: 10, bottom: 10, left: 0, right: 0 }}
+        >
           <PolarGrid />
           <PolarAngleAxis dataKey="emotion" />
-          <PolarRadiusAxis domain={[0, 1]} /> {/* values normalized between 0 and 1 */}
+          <PolarRadiusAxis domain={[0, 1]} />
           <Radar
             name={stimulus}
             dataKey="value"

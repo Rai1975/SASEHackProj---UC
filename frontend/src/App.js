@@ -4,13 +4,14 @@ import JournalCalendar from "./calendarPage";
 import EmotionRadar from "./emotionGraph";
 import StimulusEmotionPage from "./emotionGraphPage";
 import { AppBar, Toolbar, IconButton, Box } from "@mui/material";
+import HomePage from "./HomePage";
 import HomeIcon from '@mui/icons-material/Home';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 
 function App() {
   return (
     <div className="App">
-      <AppBar position="static" color="default" elevation={1}>
+      <AppBar position="sticky" color="default" elevation={1}>
         <Toolbar sx={{ justifyContent: 'space-between' }}>
           {/* Left-aligned Home Icon */}
           <IconButton edge="start" color="inherit" aria-label="home">
@@ -27,7 +28,7 @@ function App() {
       </AppBar>
 
       {/*Main Content*/}
-      <JournalCalendar apiBaseUrl={'http://127.0.0.1:8080'}/>
+      {/* <JournalCalendar apiBaseUrl={'http://127.0.0.1:8080'}/> */}
       {/* <EmotionRadar
         stimulus="apple"
         emotions={{
@@ -40,6 +41,7 @@ function App() {
         }}
       /> */}
       {/* <StimulusEmotionPage apiBaseUrl={'http://127.0.0.1:8080'}/> */}
+      <HomePage apiBaseUrl={'http://127.0.0.1:8080'} />
 
     </div>
   );

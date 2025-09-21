@@ -96,3 +96,17 @@ def generate_advice():
     )
 
     return output.choices[0].message.content
+
+
+def parse_output():
+    output = generate_advice()
+
+    final = {}
+
+    output = output.split('\n')
+    for i in range(len(output)):
+        output[i] = output[i].replace('- ', '')
+        splitsies = output[i].split(':')
+        final[splitsies[0]] = splitsies[1].strip()
+
+    return final
