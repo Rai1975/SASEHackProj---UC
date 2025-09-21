@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 import requests
+from twilio_controller.affirmation_generation import generate_affirmation
 import psycopg
 
 load_dotenv()
@@ -20,7 +21,6 @@ def result_to_dict(cursor, result):
 @app.route('/user', methods = ['POST'])
 def create_user():
     data = request.get_json()
-  
 
     username = data.get('username')
     if not username: 
@@ -228,6 +228,11 @@ def get_insight_by_id():
         if 'conn' in locals() and conn:
             conn.close()
 
+@app.route('/get-todays-affirmation', methods=['GET'])
+def get_affirmation():
+    affirmation = generate_affirmation()
+
+    return jsonify({"affirmation": affirmation})
 
 if __name__ == '__main__':
     app.run(debug=True, port=8080)
