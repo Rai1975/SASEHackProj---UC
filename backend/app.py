@@ -3,7 +3,6 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 import requests
-
 import psycopg
 
 load_dotenv()
@@ -99,5 +98,41 @@ def delete_user():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/call_logs/by_date', methods=['GET'])
+def get_call_by_date():
+    date = request.args.get('date')
+
+    if not date:
+        return jsonify({"error": "Missing 'date' query parameter"}), 400
+
+    query = '''
+        SELECT uc.raw_text, ci.insight, uc.created_at
+        FROM "User_Call" uc
+        JOIN "Call_Insights" ci ON uc.id = ci.call_id
+        WHERE DATE(uc.created_at) = %s
+    '''
+
+    try:
+        conn = psycopg.connect(os.getenv('SUPABASE_URL'), options="-c prepare_threshold=0")
+        cur = conn.cursor()
+
+        cur.execute(query, (date,))
+        rows = cur.fetchall()
+
+        # Format as JSON-friendly structure
+        entries = [{"raw_text": row[0], "insight": row[1], "created_at": row[2]} for row in rows]
+
+        return jsonify({"entries": entries})
+
+    except Exception as e:
+        print(f"Error connecting or querying Supabase: {e}")
+        return jsonify({"error": "Database query failed"}), 500
+
+    finally:
+        if 'cur' in locals() and cur:
+            cur.close()
+        if 'conn' in locals() and conn:
+            conn.close()
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=8080)
