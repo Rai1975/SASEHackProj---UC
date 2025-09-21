@@ -108,7 +108,7 @@ def get_call_by_date():
         return jsonify({"error": "Missing 'date' query parameter"}), 400
 
     query = '''
-        SELECT uc.raw_text, ci.insight, uc.created_at
+        SELECT uc.id, uc.raw_text, ci.insight, uc.created_at
         FROM "User_Call" uc
         JOIN "Call_Insights" ci ON uc.id = ci.call_id
         WHERE DATE(uc.created_at) = %s
@@ -121,8 +121,8 @@ def get_call_by_date():
         cur.execute(query, (date,))
         rows = cur.fetchall()
 
-        # Format as JSON-friendly structure
-        entries = [{"raw_text": row[0], "insight": row[1], "created_at": row[2]} for row in rows]
+        # Format as JSON-friendly structure - now including id
+        entries = [{"id": row[0], "raw_text": row[1], "insight": row[2], "created_at": row[3]} for row in rows]
 
         return jsonify({"entries": entries})
 
