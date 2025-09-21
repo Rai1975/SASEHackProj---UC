@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, use } from "react";
 import {
   Container,
   Typography,
@@ -14,18 +14,38 @@ import {
   Grid,
   ToggleButtonGroup,
   ToggleButton,
+  IconButton,
 } from "@mui/material";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DateCalendar } from "@mui/x-date-pickers/DateCalendar";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import dayjs from "dayjs";
 
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+
+// Add dayjs plugins
+dayjs.extend(isSameOrBefore);
+dayjs.extend(isSameOrAfter);
+
 export default function JournalCalendar({ apiBaseUrl }) {
+  const today = dayjs().startOf('day');
+
+   const currentWeekStart = today.subtract(today.day(), 'day');
+
+  const [weekStart, setWeekStart] = useState(today.subtract(today.day(), 'day'));
+
   const [selectedDate, setSelectedDate] = useState(dayjs());
+  
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState(null);
+  const [calendarExpanded, setCalendarExpanded] = useState(false);
 
   const formattedDate = selectedDate.format("YYYY-MM-DD");
 
@@ -34,30 +54,62 @@ export default function JournalCalendar({ apiBaseUrl }) {
   const currentDayOfWeek = selectedDate.day();
   const [selectedDayName, setSelectedDayName] = useState(days[currentDayOfWeek]);
 
-  const handleDayChange = (event, newDay) => {
-    if (newDay !== null) {
-      setSelectedDayName(newDay);
-      
-      // Find the closest date matching the selected day
-      const targetDayIndex = days.indexOf(newDay);
-      const currentDayIndex = selectedDate.day();
-      
-      let daysToAdd = targetDayIndex - currentDayIndex;
-      // If negative, we need to move forward to the next occurrence
-      if (daysToAdd < 0) daysToAdd += 7;
-      
-      // If it's the same day but we want the next occurrence
-      if (daysToAdd === 0 && newDay === selectedDayName) daysToAdd = 7;
-      
-      const newDate = selectedDate.add(daysToAdd, 'day');
-      setSelectedDate(newDate);
+  // Generate week days based on current week start
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    return {
+      date: weekStart.add(i, 'day'),
+      dayName: days[i],
+      dayInitial: dayInitials[i],
+      isSelectable: weekStart.add(i, 'day').isSameOrBefore(today, 'day')
+    };
+  });
+
+  // Handle navigation between weeks
+  const goToPreviousWeek = () => {
+    setWeekStart(weekStart.subtract(7, 'day'));
+  };
+
+  const goToNextWeek = () => {
+    // Calculate the next week start date
+    const nextWeekStart = weekStart.add(7, 'day');
+    
+    // Allow navigation as long as we're not going beyond the current week
+    if (nextWeekStart.isSameOrBefore(currentWeekStart, 'day')) {
+      setWeekStart(nextWeekStart);
+    } else {
+      // If we're not already at the current week, go to the current week
+      if (!weekStart.isSame(currentWeekStart, 'day')) {
+        setWeekStart(currentWeekStart);
+      }
+    }
+  };
+
+  const isCurrentWeek = weekStart.isSame(currentWeekStart,'day');
+
+  // Handle day selection from circular buttons
+  const handleDaySelect = (date, dayName) => {
+    // Only allow selecting non-future dates
+    if (date.isSameOrBefore(today, 'day')) {
+      setSelectedDate(date);
+      setSelectedDayName(dayName);
     }
   };
 
   // When date changes from calendar, update selected day name
   const handleDateChange = (newValue) => {
-    setSelectedDate(newValue);
-    setSelectedDayName(days[newValue.day()]);
+    if (newValue.isSameOrBefore(today,'day')) {
+      setSelectedDate(newValue);
+      setSelectedDayName(days[newValue.day()]);
+
+      const newValueWeekStart = newValue.subtract(newValue.day(),'day');
+      if (!newValueWeekStart.isSame(weekStart, 'day')) {
+        setWeekStart(newValueWeekStart);
+      }
+    }
+  };
+
+  const toggleCalendar = () => {
+    setCalendarExpanded(!calendarExpanded);
   };
 
   useEffect(() => {
@@ -92,39 +144,90 @@ export default function JournalCalendar({ apiBaseUrl }) {
         </Typography>
 
         {/* Day Selection Nav Bar */}
-        <Paper elevation={3} sx={{ p: 2, mb: 4, display: 'flex', justifyContent: 'center' }}>
-          <ToggleButtonGroup
-            value={selectedDayName}
-            exclusive
-            onChange={handleDayChange}
-            aria-label="day of week"
-            sx={{ flexWrap: 'wrap' }}
-          >
-            {days.map((day, index) => (
-              <ToggleButton 
-              key={day} 
-              value={day} 
-              aria-label={day}
-              sx={{
-                borderRadius: '50%', 
-                minWidth: '40px', 
-                width: '40px',
-                height: '40px',
-                margin: '0 4px',
-                p: 0
-              }}
+        <Paper 
+        elevation={3} 
+        sx={{ 
+          p: 2, 
+          mb: 4, 
+          display: 'flex',
+          flexDirection: 'column', 
+          alignItems: 'center' 
+          }}
+        >
+          {/* Week Navigation */}
+          <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', mb: 1 }}>
+            <IconButton onClick={goToPreviousWeek} size="small">
+              <ChevronLeftIcon />
+            </IconButton>
+            
+            <Typography variant="subtitle1">
+              {weekStart.format('MMM D')} - {weekStart.add(6, 'day').format('MMM D, YYYY')}
+            </Typography>
+            
+            <IconButton 
+              onClick={goToNextWeek} 
+              disabled={isCurrentWeek}
+              size="small"
+              sx={{ color: isCurrentWeek ? 'grey.400' : 'inherit' }}
+            >
+              <ChevronRightIcon />
+            </IconButton>
+          </Box>
+
+           {/* Day Buttons */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', mb: 1 }}>
+            {weekDays.map((day) => (
+              <Box 
+                key={day.dayName}
+                sx={{ 
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center'
+                }}
               >
-              {dayInitials [index]}
-              </ToggleButton>
+                <Typography variant="caption" sx={{ mb: 0.5 }}>
+                  {day.date.format('D')}
+                </Typography>
+                <Button 
+                  onClick={() => handleDaySelect(day.date, day.dayName)}
+                  disabled={!day.isSelectable}
+                  variant={selectedDate.format('YYYY-MM-DD') === day.date.format('YYYY-MM-DD') ? "contained" : "text"}
+                  sx={{
+                    borderRadius: '50%', 
+                    minWidth: '40px', 
+                    width: '40px',
+                    height: '40px',
+                    p: 0,
+                    backgroundColor: selectedDate.format('YYYY-MM-DD') === day.date.format('YYYY-MM-DD') ? 'primary.main' : 'transparent',
+                    color: !day.isSelectable ? 'text.disabled' : 
+                           selectedDate.format('YYYY-MM-DD') === day.date.format('YYYY-MM-DD') ? 'white' : 'text.primary'
+                  }}
+                >
+                  {day.dayInitial}
+                </Button>
+              </Box>
             ))}
-          </ToggleButtonGroup>
+          </Box>
+
+          {/* Dropdown Arrow for Calendar */}
+            <IconButton 
+              onClick={toggleCalendar}
+              size="small"
+              aria-label={calendarExpanded ? "collapse calendar" : "expand calendar"}
+              sx={{ mt: 0.5 }}
+            >
+              {calendarExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            </IconButton>
+
         </Paper>
 
         {/* Calendar - With Circle Selection*/}
-        <Paper elevation={3} sx={{ p: 2, mb: 4 }}>
+        <Collapse in={calendarExpanded} timeout="auto">
+          <Paper elevation={3} sx={{ p: 2, mb: 4 }}>
           <DateCalendar
             value={selectedDate}
             onChange={handleDateChange}
+            maxDate={today}
             sx={{
               '& .MuiPickersDay-root': {
                 borderRadius: '50%'
@@ -134,10 +237,15 @@ export default function JournalCalendar({ apiBaseUrl }) {
               },
               '& .MuiPickersDay-today': {
                 borderRadius: '50%'
+              },
+              '& .MuiPickersDay-dayOutsideMonth': {
+                opacity: 0.5
               }
             }}
           />
         </Paper>
+        </Collapse>
+        
 
         {/* Journal Entries */}
         <Paper elevation={3} sx={{ p: 2 }}>
