@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-
+import { useNavigate } from "react-router-dom";
 import {
   Container,
   Typography,
@@ -26,6 +26,7 @@ import ReactMarkdown from "react-markdown";
 import EmotionRadar from "./emotionGraph";
 
 export default function HomePage({ apiBaseUrl }) {
+  const navigate = useNavigate();
   const [affirmation, setAffirmation] = useState("");
   const [reminders, setReminders] = useState("");
   const [advice, setAdvice] = useState([]);
@@ -62,6 +63,10 @@ export default function HomePage({ apiBaseUrl }) {
 
     fetchData();
   }, [apiBaseUrl]);
+
+  const handleStimulusClick = (stimulusName) => {
+    navigate(`/emotionGraphPage?stimulus=${encodeURIComponent(stimulusName)}`);
+  };
 
   if (loading) {
     return (
@@ -310,6 +315,7 @@ export default function HomePage({ apiBaseUrl }) {
               <Grid item xs={12} sm={6} md={4} key={idx}>
                 <Paper
                   elevation={0}
+                  onClick={() => handleStimulusClick(stim.name)}
                   sx={{
                     p: { xs: 2, sm: 3 },
                     borderRadius: 3,
@@ -318,11 +324,17 @@ export default function HomePage({ apiBaseUrl }) {
                     width: '200px',
                     display: 'flex',
                     flexDirection: 'column',
+                    cursor: 'pointer',
                     transition: 'all 0.3s ease-in-out',
                     '&:hover': {
-                      borderColor: 'rgba(79, 70, 229, 0.3)',
+                      borderColor: 'rgba(79, 70, 229, 0.4)',
+                      transform: 'translateY(-8px)',
+                      boxShadow: '0 12px 40px rgba(79, 70, 229, 0.15)',
+                      bgcolor: 'rgba(79, 70, 229, 0.02)'
+                    },
+                    '&:active': {
                       transform: 'translateY(-5px)',
-                      boxShadow: '0 10px 30px rgba(79, 70, 229, 0.1)'
+                      boxShadow: '0 8px 25px rgba(79, 70, 229, 0.2)'
                     }
                   }}
                 >
@@ -354,6 +366,36 @@ export default function HomePage({ apiBaseUrl }) {
                   </Typography>
                   <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <EmotionRadar stimulus={stim.name} emotions={stim.emotions} />
+                  </Box>
+
+                  {/* Click indicator */}
+                  <Box
+                    sx={{
+                      mt: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: 0.7,
+                      transition: 'opacity 0.3s ease'
+                    }}
+                  >
+                    <TouchApp
+                      sx={{
+                        fontSize: '1rem',
+                        color: '#4F46E5',
+                        mr: 0.5
+                      }}
+                    />
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: '#6B7280',
+                        fontSize: '0.75rem',
+                        fontWeight: 500
+                      }}
+                    >
+                      Click to explore
+                    </Typography>
                   </Box>
                 </Paper>
               </Grid>

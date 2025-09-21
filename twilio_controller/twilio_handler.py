@@ -40,7 +40,7 @@ def make_call():
 
 def get_most_recent_recording():
     recordings = client.recordings.list(limit=1)
-    path = os.path.join(os.getcwd(), "twilio\\raw_recordings\\")
+    path = os.path.join(os.getcwd(), "twilio_controller\\raw_recordings\\")
 
     for rec in recordings:
         recording_url = f"https://api.twilio.com{rec.uri.replace('.json', '.wav')}"
@@ -205,4 +205,4 @@ def twilio_call_end_pipeline():
     }, 200
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=5000)

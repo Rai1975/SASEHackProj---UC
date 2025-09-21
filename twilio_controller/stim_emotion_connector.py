@@ -3,7 +3,7 @@ import re
 from object_recognition import recognize_objects
 import os
 
-model = pickle.load(open(os.path.join(os.getcwd(), 'twilio\\rf_model.pkl'), 'rb'))
+model = pickle.load(open(os.path.join(os.getcwd(), 'twilio_controller\\rf_model.pkl'), 'rb'))
 
 def draw_connections(text):
     object_emotions = {}
