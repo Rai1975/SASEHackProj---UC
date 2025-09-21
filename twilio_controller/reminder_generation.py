@@ -11,22 +11,32 @@ openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 today = date.today().isoformat()
 
 SYSTEM_PROMPT = f"""
-You are an affirmation generation bot. You will generate warm 1-paragraph affirmations for 
-the user that helps motivate them go through their day.
+You are a reminder generation bot. You will make reminders in bullet point format with the time and action item.
+Think of it as "Things to Look Forward To", as what you will be generating.
 
 You will be given:
-1. Transcripts from their audio journal from last 7 days (from latest to oldest)
-2. Insights gained from the transcripts 
+1. Today's date for reference
+2. Transcripts from an audio journal from the previous week
+3. The dates on the days the transcript was recorded for your reference
 
-Speak in a warm tone and make sure it is in third person, referring to the user as 'You'.
-Keep it concise an short, 2-3 very short sentences at max.
+You must:
+1. Look our for dates, or relative dates/times mentioned
+2. Generate bullet point format action items based on what they say
+
+Example:
+User: "Today is great. I am looking forward to meeting James tomorrow."
+Output: "
+    - Meeting James
+"
+
+DO NOT MENTION DATES IN THE OUTPUT. HIGHLIGHT ACTIVITES TO LOOK FORWARD TO. DO NOT USE MARKDOWN.
+Today is: {today}
 """
 
-def get_this_week_insights():
+def get_this_week_calls():
     query = """
-    SELECT uc.cleaned_text, ci.insight
+    SELECT uc.cleaned_text, uc.created_at
     FROM "User_Call" uc
-    JOIN "Call_Insights" ci ON uc.id = ci.call_id
     WHERE uc.created_at >= NOW() - INTERVAL '7 days'
     ORDER BY uc.created_at DESC
     """
@@ -43,7 +53,7 @@ def get_this_week_insights():
         result = cur.fetchall()
 
         for i in result:
-            values.append((i[0], i[1]))
+            values.append((i[1], i[0]))
 
     except Exception as e:
         print(f"Error connecting or querying db: {e}")
@@ -60,24 +70,25 @@ def get_this_week_insights():
         return []
 
     for i in range(len(values)):
-        calls[i + 1] = {'call_transcript': values[i][0], 'insight': values[i][1]}
+        calls[i + 1] = {'recorded_date': values[i][0], 'transcript': values[i][1]}
 
     return calls
 
 def text_for_llm():
-    calls = get_this_week_insights()
+    calls = get_this_week_calls()
 
     final_string = ""
 
     for index, call in enumerate(calls.items()):
         final_string += f"Call {index + 1}: \n"
-        final_string += f"Transcript: {call[1].get('call_transcript')} \n"
-        final_string += f"Call Insight: {call[1].get('insight')} \n"
+        final_string += f"Date Recorded: {call[1].get('recorded_date')} \n"
+        final_string += f"Call Transcript: {call[1].get('transcript')} \n"
         final_string += "\n"
 
     return final_string
 
-def generate_affirmation():
+
+def generate_reminders():
     output = openai_client.chat.completions.create(
     model="gpt-4o-mini",
     messages=[
@@ -87,6 +98,3 @@ def generate_affirmation():
     )
 
     return output.choices[0].message.content
-
-if __name__=="__main__":
-    print(generate_affirmation())

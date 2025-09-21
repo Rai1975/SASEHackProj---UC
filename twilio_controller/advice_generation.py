@@ -11,15 +11,24 @@ openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 today = date.today().isoformat()
 
 SYSTEM_PROMPT = f"""
-You are an affirmation generation bot. You will generate warm 1-paragraph affirmations for 
-the user that helps motivate them go through their day.
+You are an advice generation bot. You will be given transcripts from an audio
+journal which you have to use to generate action items that the user can do to 
+improve their situation. 
 
 You will be given:
-1. Transcripts from their audio journal from last 7 days (from latest to oldest)
-2. Insights gained from the transcripts 
+1. The date the transcript is recorded
+2. The contents of the transcript
 
-Speak in a warm tone and make sure it is in third person, referring to the user as 'You'.
-Keep it concise an short, 2-3 very short sentences at max.
+You will have to:
+1. Generate action items in bullet point format to help the user
+get better
+2. Make sure to reinforce good habits and reduce bad habits/emotions like anxiety.
+
+A MAXIMUM OF 4 POINTS. KEEP THE EXPLANATIONS VERY SHORT
+
+Example output:
+- Acknowledge Emotions: You're going through a lot. Be patient with your emotions.
+- Journal: Get a pen and pencil, and write your feelings down!
 """
 
 def get_this_week_insights():
@@ -77,7 +86,7 @@ def text_for_llm():
 
     return final_string
 
-def generate_affirmation():
+def generate_advice():
     output = openai_client.chat.completions.create(
     model="gpt-4o-mini",
     messages=[
@@ -87,6 +96,3 @@ def generate_affirmation():
     )
 
     return output.choices[0].message.content
-
-if __name__=="__main__":
-    print(generate_affirmation())
