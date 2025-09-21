@@ -139,9 +139,14 @@ export default function JournalCalendar({ apiBaseUrl }) {
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Container maxWidth="lg" sx={{ mt: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          Journal Calendar
-        </Typography>
+        <Box sx={{ textAlign: 'center', mb: 2 }}>
+          <Typography variant="h3" gutterBottom>
+            {selectedDayName}
+          </Typography>
+          <Typography variant="h4" color="text.secondary">
+            {selectedDate.format('MMM D')}
+          </Typography>
+        </Box>
 
         {/* Day Selection Nav Bar */}
         <Paper 
@@ -250,7 +255,7 @@ export default function JournalCalendar({ apiBaseUrl }) {
         {/* Journal Entries */}
         <Paper elevation={3} sx={{ p: 2 }}>
           <Typography variant="h6">
-            Entries on {selectedDayName}, {formattedDate}
+            Today's Entries
           </Typography>
           <Divider sx={{ my: 1 }} />
 
