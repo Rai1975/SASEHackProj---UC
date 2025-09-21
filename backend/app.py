@@ -187,38 +187,95 @@ def get_emotion_mappings():
         if 'conn' in locals() and conn:
             conn.close()
 
-@app.route('/insight/get-by-stim-id', methods=['GET'])
-def get_insight_by_id():
-    stim_id = request.args.get('id')
+@app.route('/stimulus/by-call-id', methods=['GET'])
+def get_stims_by_call_id():
+    query = '''
+        SELECT name, created_at, anger, fear, joy, love, sadness, surprise, id
+        FROM "Stimuli"
+        ORDER BY name, created_at
+    '''
 
-    if not stim_id:
+    try:
+        conn = psycopg.connect(
+            os.getenv('SUPABASE_URL'),
+            options="-c prepare_threshold=0"
+        )
+        cur = conn.cursor()
+        cur.execute(query)
+        rows = cur.fetchall()
+
+        # Group by stimulus name
+        result = {}
+        for row in rows:
+            name, created_at, anger, fear, joy, love, sadness, surprise, id = row
+
+            entry = {
+                "created_at": created_at.isoformat() if created_at else None,
+                "emotions": {
+                    "anger": anger,
+                    "fear": fear,
+                    "joy": joy,
+                    "love": love,
+                    "sadness": sadness,
+                    "surprise": surprise,
+                },
+                "stim_id": id
+            }
+
+            if name not in result:
+                result[name] = []
+            result[name].append(entry)
+
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"Error connecting or querying Supabase: {e}")
+        return jsonify({"error": "Database query failed"}), 500
+
+    finally:
+        if 'cur' in locals() and cur:
+            cur.close()
+        if 'conn' in locals() and conn:
+            conn.close()
+
+
+@app.route('/stimulus/get-by-call-id', methods=['GET'])
+def get_insight_by_id():
+    call_id = request.args.get('call_id')
+
+    if not call_id:
         return jsonify({"error": "Missing 'id' query parameter"}), 400
 
     query = '''
-        SELECT ci.created_at, ci.insight
-        FROM "Call_Insights" ci
-        JOIN "Stim_Insight" si ON ci.id = si.insight_id
-        WHERE si.stim_id = %s
-        ORDER BY ci.created_at
+        SELECT name, anger, fear, joy, love, sadness, surprise
+        FROM "Stimuli"
+        WHERE user_call_id = %s
     '''
 
     try:
         conn = psycopg.connect(os.getenv('SUPABASE_URL'), options="-c prepare_threshold=0")
         cur = conn.cursor()
 
-        cur.execute(query, (stim_id,))
+        cur.execute(query, (call_id,))
         rows = cur.fetchall()
 
         # Format as JSON-friendly structure
         entries = [
             {
-                "created_at": row[0].isoformat() if row[0] else None,
-                "insight": row[1]
+                "name":row[0],
+                "emotions": {
+                    "anger": row[1],
+                    "fear": row[2],
+                    "joyr": row[3],
+                    "love": row[4],
+                    "sadness": row[5],
+                    "surprise": row[6]
+                }
             }
             for row in rows
         ]
 
-        return jsonify({"entries": entries})
+        return jsonify({"stims": entries})
 
     except Exception as e:
         print(f"Error connecting or querying Supabase: {e}")
