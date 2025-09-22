@@ -120,8 +120,7 @@ export default function JournalCalendar({ apiBaseUrl }) {
 
   // Navigate to entry insight page
   const navigateToEntryDetail = (entry) => {
-    console.log('AAAA', encodeURIComponent(entry.created_at))
-    navigate(`/entry?date=${encodeURIComponent(entry.created_at)}`);
+    navigate(`/entry?date=${encodeURIComponent(entry.created_at)}&call_id=${entry.id}`);
   };
 
 
