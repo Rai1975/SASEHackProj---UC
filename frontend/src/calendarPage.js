@@ -1,4 +1,5 @@
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Container,
   Typography,
@@ -12,8 +13,8 @@ import {
   Button,
   Collapse,
   Grid,
-  ToggleButtonGroup,
-  ToggleButton,
+  // ToggleButtonGroup,
+  // ToggleButton,
   IconButton,
 } from "@mui/material";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -23,19 +24,24 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 import dayjs from "dayjs";
 
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+// import isSame from "dayjs/plugin/isSame";
 
 // Add dayjs plugins
 dayjs.extend(isSameOrBefore);
 dayjs.extend(isSameOrAfter);
+// dayjs.extend(isSame);
 
 export default function JournalCalendar({ apiBaseUrl }) {
+  const navigate = useNavigate();
+  
   const today = dayjs().startOf('day');
 
-   const currentWeekStart = today.subtract(today.day(), 'day');
+  const currentWeekStart = today.subtract(today.day(), 'day');
 
   const [weekStart, setWeekStart] = useState(today.subtract(today.day(), 'day'));
 
@@ -111,6 +117,13 @@ export default function JournalCalendar({ apiBaseUrl }) {
   const toggleCalendar = () => {
     setCalendarExpanded(!calendarExpanded);
   };
+
+  // Navigate to entry insight page
+  const navigateToEntryDetail = (entry) => {
+    console.log('AAAA', encodeURIComponent(entry.created_at))
+    navigate(`/entry?date=${encodeURIComponent(entry.created_at)}`);
+  };
+
 
   useEffect(() => {
     const fetchEntries = async () => {
@@ -275,22 +288,15 @@ export default function JournalCalendar({ apiBaseUrl }) {
                       </Typography>
                     </CardContent>
                     <CardActions>
-                      <Button size="small" onClick={() => handleToggleExpand(index)}>
-                        {expanded === index ? "Hide Insight" : "Show Insight"}
+                      {/* Changed to navigate instead of expand */}
+                      <Button 
+                        size="small" 
+                        onClick={() => navigateToEntryDetail(entry)}
+                        startIcon={<VisibilityIcon />}
+                      >
+                        View Insight
                       </Button>
                     </CardActions>
-                    <Collapse in={expanded === index} timeout="auto" unmountOnExit>
-                      <CardContent>
-                        <Typography variant="subtitle2" gutterBottom>
-                          Raw Text
-                        </Typography>
-                        <Typography variant="body2">{entry.raw_text}</Typography>
-                        <Typography variant="subtitle2" gutterBottom>
-                          Insight
-                        </Typography>
-                        <Typography variant="body2">{entry.insight}</Typography>
-                      </CardContent>
-                    </Collapse>
                   </Card>
                 </Grid>
               ))}
