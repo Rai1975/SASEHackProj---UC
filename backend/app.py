@@ -187,46 +187,39 @@ def get_emotion_mappings():
         if 'conn' in locals() and conn:
             conn.close()
 
-@app.route('/stimulus/by-call-id', methods=['GET'])
-def get_stims_by_call_id():
+
+@app.route('/insight/get-by-stim-id', methods=['GET'])
+def get_insight_by_stim_id():
+    stim_id = request.args.get('id')
+
+    if not stim_id:
+        return jsonify({"error": "Missing 'id' query parameter"}), 400
+
     query = '''
-        SELECT name, created_at, anger, fear, joy, love, sadness, surprise, id
-        FROM "Stimuli"
-        ORDER BY name, created_at
+        SELECT ci.created_at, ci.insight
+        FROM "Call_Insights" ci
+        JOIN "Stim_Insight" si ON ci.id = si.insight_id
+        WHERE si.stim_id = %s
+        ORDER BY ci.created_at
     '''
 
     try:
-        conn = psycopg.connect(
-            os.getenv('SUPABASE_URL'),
-            options="-c prepare_threshold=0"
-        )
+        conn = psycopg.connect(os.getenv('SUPABASE_URL'), options="-c prepare_threshold=0")
         cur = conn.cursor()
-        cur.execute(query)
+
+        cur.execute(query, (stim_id,))
         rows = cur.fetchall()
 
-        # Group by stimulus name
-        result = {}
-        for row in rows:
-            name, created_at, anger, fear, joy, love, sadness, surprise, id = row
-
-            entry = {
-                "created_at": created_at.isoformat() if created_at else None,
-                "emotions": {
-                    "anger": anger,
-                    "fear": fear,
-                    "joy": joy,
-                    "love": love,
-                    "sadness": sadness,
-                    "surprise": surprise,
-                },
-                "stim_id": id
+        # Format as JSON-friendly structure
+        entries = [
+            {
+                "created_at": row[0].isoformat() if row[0] else None,
+                "insight": row[1]
             }
+            for row in rows
+        ]
 
-            if name not in result:
-                result[name] = []
-            result[name].append(entry)
-
-        return jsonify(result)
+        return jsonify({"entries": entries})
 
     except Exception as e:
         print(f"Error connecting or querying Supabase: {e}")
@@ -237,7 +230,6 @@ def get_stims_by_call_id():
             cur.close()
         if 'conn' in locals() and conn:
             conn.close()
-
 
 @app.route('/stimulus/get-by-call-id', methods=['GET'])
 def get_insight_by_id():
@@ -286,6 +278,8 @@ def get_insight_by_id():
             cur.close()
         if 'conn' in locals() and conn:
             conn.close()
+
+
 
 @app.route('/get-todays-affirmation', methods=['GET'])
 def get_affirmation():
