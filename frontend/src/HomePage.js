@@ -362,7 +362,7 @@ export default function HomePage({ apiBaseUrl }) {
                       fontStyle: 'italic'
                     }}
                   >
-                    {stim.mentions} gentle mentions
+                    {stim.mentions} mentions
                   </Typography>
                   <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <EmotionRadar stimulus={stim.name} emotions={stim.emotions} />
