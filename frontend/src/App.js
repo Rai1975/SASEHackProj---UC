@@ -67,7 +67,7 @@ function AppContent() {
       <Routes>
         <Route path="/" element={<HomePage apiBaseUrl={apiBaseUrl} />} />
         <Route path="/calendar" element={<JournalCalendar apiBaseUrl={apiBaseUrl} />} />
-        <Route path="/entry/:entryId" element={<EntryInsight apiBaseUrl={apiBaseUrl} />} />
+        <Route path="/entry" element={<EntryInsight apiBaseUrl={apiBaseUrl} />} />
         <Route path="/emotions" element={<StimulusEmotionPage apiBaseUrl={apiBaseUrl} />} />
         <Route path="/emotionGraphPage" element={<StimulusEmotionPage apiBaseUrl={apiBaseUrl}/>} />
       </Routes>
